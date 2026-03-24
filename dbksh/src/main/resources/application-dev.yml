@@ -1,0 +1,29 @@
+sky:
+  # Commit-safe defaults. Override locally with environment variables or local edits.
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    host: localhost
+    port: 3306
+    database: sky_take_out
+    username: root
+    password: ${SKY_DB_PASSWORD:change-me}
+  alioss:
+    endpoint: oss-cn-beijing.aliyuncs.com
+    access-key-id: ${ALIYUN_ACCESS_KEY_ID:your-access-key-id}
+    access-key-secret: ${ALIYUN_ACCESS_KEY_SECRET:your-access-key-secret}
+    bucket-name: ${ALIYUN_OSS_BUCKET:your-bucket-name}
+  redis:
+    host: localhost
+    port: 6379
+    password: ${SKY_REDIS_PASSWORD:change-me}
+    database: 10
+  wechat:
+    appid: ${WECHAT_APP_ID:your-wechat-app-id}
+    secret: ${WECHAT_APP_SECRET:your-wechat-app-secret}
+    mchid: ${WECHAT_MCH_ID:your-merchant-id}
+    mchSerialNo: ${WECHAT_MCH_SERIAL_NO:your-merchant-serial}
+    privateKeyFilePath: ${WECHAT_PRIVATE_KEY_PATH:C:/path/to/apiclient_key.pem}
+    apiV3Key: ${WECHAT_API_V3_KEY:your-api-v3-key}
+    weChatPayCertFilePath: ${WECHAT_PAY_CERT_PATH:C:/path/to/wechatpay.pem}
+    notifyUrl: ${WECHAT_NOTIFY_URL:https://example.com/notify/paySuccess}
+    refundNotifyUrl: ${WECHAT_REFUND_NOTIFY_URL:https://example.com/notify/refundSuccess}

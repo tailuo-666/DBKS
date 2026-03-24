@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="scau.dbksh.mapper.UserMapper">
+
+    <select id="selectByWechat" resultType="User">
+        select id,
+               username,
+               wechat,
+               role,
+               create_time,
+               update_time
+        from `user`
+        where wechat = #{wechat}
+    </select>
+
+    <insert id="insertUser" useGeneratedKeys="true" keyProperty="id">
+        insert into `user` (username, wechat, role)
+        values (#{username}, #{wechat}, #{role})
+    </insert>
+</mapper>
