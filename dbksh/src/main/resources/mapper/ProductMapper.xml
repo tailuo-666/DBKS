@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="scau.dbksh.mapper.ProductMapper">
+
+    <select id="selectPublishedByCategory" resultType="Product">
+        select id,
+               seller_id,
+               category,
+               name,
+               description,
+               price,
+               wechat,
+               address,
+               status,
+               create_time,
+               update_time
+        from product
+        where category = #{category}
+          and status = '已上架'
+        order by create_time desc, id desc
+    </select>
+
+    <select id="selectPublishedIdsByNameLike" resultType="long">
+        select id
+        from product
+        where status = '已上架'
+          and name like concat('%', #{keyword}, '%')
+        order by create_time desc, id desc
+    </select>
+
+    <select id="selectPublishedByIds" resultType="Product">
+        select id,
+               seller_id,
+               category,
+               name,
+               description,
+               price,
+               wechat,
+               address,
+               status,
+               create_time,
+               update_time
+        from product
+        where status = '已上架'
+          and id in
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+        order by create_time desc, id desc
+    </select>
+
+    <select id="selectPublishedById" resultType="Product">
+        select id,
+               seller_id,
+               category,
+               name,
+               description,
+               price,
+               wechat,
+               address,
+               status,
+               create_time,
+               update_time
+        from product
+        where id = #{id}
+          and status = '已上架'
+    </select>
+
+    <select id="selectByIdAndSellerId" resultType="Product">
+        select id,
+               seller_id,
+               category,
+               name,
+               description,
+               price,
+               wechat,
+               address,
+               status,
+               create_time,
+               update_time
+        from product
+        where id = #{id}
+          and seller_id = #{sellerId}
+    </select>
+
+    <insert id="insertProduct" useGeneratedKeys="true" keyProperty="id">
+        insert into product (
+            seller_id,
+            category,
+            name,
+            description,
+            price,
+            wechat,
+            address,
+            status
+        ) values (
+            #{sellerId},
+            #{category},
+            #{name},
+            #{description},
+            #{price},
+            #{wechat},
+            #{address},
+            #{status}
+        )
+    </insert>
+
+    <update id="updateProduct">
+        update product
+        set category = #{category},
+            name = #{name},
+            description = #{description},
+            price = #{price},
+            wechat = #{wechat},
+            address = #{address},
+            status = #{status}
+        where id = #{id}
+          and seller_id = #{sellerId}
+    </update>
+</mapper>

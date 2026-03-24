@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="scau.dbksh.mapper.ProductImageMapper">
+
+    <select id="selectByProductIds" resultType="ProductImage">
+        select id,
+               product_id,
+               image_url,
+               sort_order,
+               create_time,
+               update_time
+        from product_image
+        where product_id in
+        <foreach collection="productIds" item="productId" open="(" separator="," close=")">
+            #{productId}
+        </foreach>
+        order by product_id asc, sort_order asc, id asc
+    </select>
+
+    <select id="selectByProductId" resultType="ProductImage">
+        select id,
+               product_id,
+               image_url,
+               sort_order,
+               create_time,
+               update_time
+        from product_image
+        where product_id = #{productId}
+        order by sort_order asc, id asc
+    </select>
+
+    <insert id="insertBatch">
+        insert into product_image (product_id, image_url, sort_order)
+        values
+        <foreach collection="images" item="image" separator=",">
+            (#{image.productId}, #{image.imageUrl}, #{image.sortOrder})
+        </foreach>
+    </insert>
+
+    <delete id="deleteByProductId">
+        delete from product_image
+        where product_id = #{productId}
+    </delete>
+</mapper>

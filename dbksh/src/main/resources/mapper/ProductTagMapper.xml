@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="scau.dbksh.mapper.ProductTagMapper">
+
+    <select id="selectProductIdsByTagIds" resultType="long">
+        select distinct product_id
+        from product_tag
+        where tag_id in
+        <foreach collection="tagIds" item="tagId" open="(" separator="," close=")">
+            #{tagId}
+        </foreach>
+    </select>
+
+    <select id="selectTagNamesByProductIds" resultType="scau.dbksh.dto.ProductTagRelationDTO">
+        select pt.product_id as productId,
+               t.name as tagName
+        from product_tag pt
+                 inner join tag t on pt.tag_id = t.id
+        where pt.product_id in
+        <foreach collection="productIds" item="productId" open="(" separator="," close=")">
+            #{productId}
+        </foreach>
+        order by pt.product_id asc, pt.id asc
+    </select>
+
+    <insert id="insertBatch">
+        insert into product_tag (product_id, tag_id)
+        values
+        <foreach collection="productTags" item="productTag" separator=",">
+            (#{productTag.productId}, #{productTag.tagId})
+        </foreach>
+    </insert>
+
+    <delete id="deleteByProductId">
+        delete from product_tag
+        where product_id = #{productId}
+    </delete>
+</mapper>
