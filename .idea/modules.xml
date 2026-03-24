@@ -3,7 +3,6 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/.idea/Databks.iml" filepath="$PROJECT_DIR$/.idea/Databks.iml" />
-      <module fileurl="file://$PROJECT_DIR$/dbksh/dbksh.iml" filepath="$PROJECT_DIR$/dbksh/dbksh.iml" />
     </modules>
   </component>
 </project>
