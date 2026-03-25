@@ -12,6 +12,7 @@ public class LoginInterceptor implements HandlerInterceptor {
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
+        // 当前请求拿不到登录用户时，直接拦截并返回 401。
         if (UserHolder.getUser() == null) {
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             return false;

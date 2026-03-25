@@ -44,12 +44,13 @@ public class UserServiceImpl implements UserService {
         if (!StringUtils.hasText(wechat)) {
             return Result.error("wechat cannot be blank");
         }
-        // 1. 生成 6 位验证码。
+
+        // 1. 先生成 6 位验证码。
         String code = String.format("%06d", ThreadLocalRandom.current().nextInt(1_000_000));
-        // 2. 以 wechat 为 key 存入 Redis，并设置过期时间。
+        // 2. 再以 wechat 为 key 写入 Redis，并设置过期时间。
         String redisKey = RedisConstants.LOGIN_CODE_KEY + wechat;
         stringRedisTemplate.opsForValue().set(redisKey, code, RedisConstants.LOGIN_CODE_TTL, TimeUnit.MINUTES);
-        // 3. 开发环境打印验证码，方便前后端联调。
+        // 3. 开发环境顺手打印验证码，方便前后端联调。
         if (environment.acceptsProfiles(Profiles.of("dev"))) {
             log.info("send login code, wechat={}, code={}", wechat, code);
         }
@@ -72,7 +73,7 @@ public class UserServiceImpl implements UserService {
             return Result.error("verification code error");
         }
 
-        // 2. 再按 wechat 查用户，不存在则自动创建一个新账号。
+        // 2. 再按 wechat 查询用户，不存在就自动创建一个新账号。
         User user = userMapper.selectByWechat(wechat);
         if (user == null) {
             user = createUserWithWechat(wechat);
