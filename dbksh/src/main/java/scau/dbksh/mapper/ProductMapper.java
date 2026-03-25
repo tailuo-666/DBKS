@@ -17,6 +17,8 @@ public interface ProductMapper {
 
     Product selectPublishedById(@Param("id") Long id);
 
+    List<Product> selectBySellerId(@Param("sellerId") Long sellerId);
+
     Product selectByIdAndSellerId(@Param("id") Long id, @Param("sellerId") Long sellerId);
 
     int insertProduct(Product product);

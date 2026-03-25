@@ -44,9 +44,12 @@ public class UserServiceImpl implements UserService {
         if (!StringUtils.hasText(wechat)) {
             return Result.error("wechat cannot be blank");
         }
+        // 1. 生成 6 位验证码。
         String code = String.format("%06d", ThreadLocalRandom.current().nextInt(1_000_000));
+        // 2. 以 wechat 为 key 存入 Redis，并设置过期时间。
         String redisKey = RedisConstants.LOGIN_CODE_KEY + wechat;
         stringRedisTemplate.opsForValue().set(redisKey, code, RedisConstants.LOGIN_CODE_TTL, TimeUnit.MINUTES);
+        // 3. 开发环境打印验证码，方便前后端联调。
         if (environment.acceptsProfiles(Profiles.of("dev"))) {
             log.info("send login code, wechat={}, code={}", wechat, code);
         }
@@ -62,12 +65,14 @@ public class UserServiceImpl implements UserService {
             return Result.error("code cannot be blank");
         }
 
+        // 1. 先校验 Redis 中缓存的验证码。
         String wechat = loginFormDTO.getWechat();
         String cacheCode = stringRedisTemplate.opsForValue().get(RedisConstants.LOGIN_CODE_KEY + wechat);
         if (!loginFormDTO.getCode().equals(cacheCode)) {
             return Result.error("verification code error");
         }
 
+        // 2. 再按 wechat 查用户，不存在则自动创建一个新账号。
         User user = userMapper.selectByWechat(wechat);
         if (user == null) {
             user = createUserWithWechat(wechat);
@@ -77,6 +82,7 @@ public class UserServiceImpl implements UserService {
             }
         }
 
+        // 3. 最后生成 token，并把当前登录用户信息写入 Redis Hash。
         String token = UUID.randomUUID().toString().replace("-", "");
         UserDTO userDTO = toUserDTO(user);
         String tokenKey = RedisConstants.LOGIN_USER_KEY + token;

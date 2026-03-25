@@ -35,6 +35,7 @@ public class RefreshTokenInterceptor implements HandlerInterceptor {
             return true;
         }
 
+        // 请求开始时恢复当前用户，并顺手刷新 token 过期时间。
         UserDTO userDTO = new UserDTO();
         userDTO.setId(Long.valueOf(String.valueOf(userMap.get("id"))));
         userDTO.setUsername(String.valueOf(userMap.get("username")));
@@ -51,6 +52,7 @@ public class RefreshTokenInterceptor implements HandlerInterceptor {
             Object handler,
             Exception ex
     ) {
+        // ThreadLocal 必须在请求结束后清理，避免线程复用导致用户串号。
         UserHolder.removeUser();
     }
 }

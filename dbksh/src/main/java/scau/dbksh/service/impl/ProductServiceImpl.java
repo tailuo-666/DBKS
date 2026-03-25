@@ -4,6 +4,7 @@ import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
+import scau.dbksh.dto.MyProductListDTO;
 import scau.dbksh.dto.ProductCreateDTO;
 import scau.dbksh.dto.ProductDetailDTO;
 import scau.dbksh.dto.ProductListDTO;
@@ -64,7 +65,9 @@ public class ProductServiceImpl implements ProductService {
         if (!StringUtils.hasText(category) || !VALID_CATEGORIES.contains(category.trim())) {
             return Result.error("invalid category");
         }
+        // 1. 先查商品主表，只取当前类别下“已上架”的商品。
         List<Product> products = productMapper.selectPublishedByCategory(category.trim());
+        // 2. 再批量补齐标签和主图，组装成列表 DTO 返回。
         return Result.success(buildProductList(products));
     }
 
@@ -75,8 +78,10 @@ public class ProductServiceImpl implements ProductService {
         }
 
         String trimmedKeyword = keyword.trim();
+        // 1. 先按商品名称模糊查询，拿到命中的商品 id。
         LinkedHashSet<Long> productIds = new LinkedHashSet<>(productMapper.selectPublishedIdsByNameLike(trimmedKeyword));
 
+        // 2. 再按标签名称模糊查询，先拿到 tag.id，再通过关联表换成商品 id。
         List<Tag> tags = tagMapper.selectByNameLike(trimmedKeyword);
         if (!tags.isEmpty()) {
             List<Long> tagIds = tags.stream().map(Tag::getId).collect(Collectors.toList());
@@ -87,6 +92,7 @@ public class ProductServiceImpl implements ProductService {
             return Result.success(Collections.emptyList());
         }
 
+        // 3. 最后按去重后的商品 id 批量回查商品，并补齐标签和主图。
         List<Product> products = productMapper.selectPublishedByIds(new ArrayList<>(productIds));
         return Result.success(buildProductList(products));
     }
@@ -102,6 +108,8 @@ public class ProductServiceImpl implements ProductService {
             return Result.error("product not found");
         }
 
+        // 1. 先查商品主表，确认该商品存在且状态为已上架。
+        // 2. 再查该商品的全部图片，按排序返回给详情页。
         List<ProductImage> images = productImageMapper.selectByProductId(id);
         ProductDetailDTO detailDTO = new ProductDetailDTO();
         detailDTO.setId(product.getId());
@@ -113,6 +121,20 @@ public class ProductServiceImpl implements ProductService {
         detailDTO.setWechat(product.getWechat());
         detailDTO.setAddress(product.getAddress());
         return Result.success(detailDTO);
+    }
+
+    @Override
+    public Result<List<MyProductListDTO>> listCurrentUserProducts() {
+        UserDTO user = UserHolder.getUser();
+        if (user == null || user.getId() == null) {
+            return Result.error("user not logged in");
+        }
+
+        // 1. 从登录态里拿当前用户 id。
+        // 2. 按 seller_id 查询该用户发布过的全部商品，不限制状态。
+        List<Product> products = productMapper.selectBySellerId(user.getId());
+        // 3. 批量补齐标签和主图，组装成“我的商品列表”。
+        return Result.success(buildMyProductList(products));
     }
 
     @Override
@@ -134,6 +156,7 @@ public class ProductServiceImpl implements ProductService {
             return Result.error(validationMessage);
         }
 
+        // 1. 从登录态里拿当前发布人的 user_id，写入 seller_id。
         UserDTO user = UserHolder.getUser();
         if (user == null || user.getId() == null) {
             return Result.error("user not logged in");
@@ -149,12 +172,15 @@ public class ProductServiceImpl implements ProductService {
         product.setAddress(trimToNull(dto.getAddress()));
         product.setStatus(STATUS_PUBLISHED);
 
+        // 2. 先写商品主表，拿到新生成的 productId。
         int rows = productMapper.insertProduct(product);
         if (rows != 1 || product.getId() == null) {
             return Result.error("create product failed");
         }
 
+        // 3. 再写图片表，保留前端传入的顺序作为 sort_order。
         saveImages(product.getId(), imageUrls);
+        // 4. 最后处理标签：先确保 tag 存在，再写商品和标签的关联表。
         saveTags(product.getId(), dto.getTags());
         return Result.success(product.getId());
     }
@@ -194,6 +220,7 @@ public class ProductServiceImpl implements ProductService {
             return Result.error("product not found");
         }
 
+        // 1. 先确认当前商品属于当前登录用户，不能修改别人的商品。
         Product product = new Product();
         product.setId(id);
         product.setSellerId(user.getId());
@@ -210,8 +237,10 @@ public class ProductServiceImpl implements ProductService {
             return Result.error("update product failed");
         }
 
+        // 2. 更新主表成功后，先删掉旧图片，再按最新内容重建图片关系。
         productImageMapper.deleteByProductId(id);
         saveImages(id, imageUrls);
+        // 3. 再删掉旧标签关联，并按最新标签重新写入关联表。
         productTagMapper.deleteByProductId(id);
         saveTags(id, dto.getTags());
         return Result.success();
@@ -257,8 +286,11 @@ public class ProductServiceImpl implements ProductService {
             return Collections.emptyList();
         }
 
+        // 1. 先收集当前批次商品 id。
         List<Long> productIds = products.stream().map(Product::getId).collect(Collectors.toList());
+        // 2. 批量查标签，避免逐条查关联表。
         Map<Long, List<String>> tagsByProductId = loadTagsByProductId(productIds);
+        // 3. 批量查图片，并取每个商品排序最靠前的一张作为主图。
         Map<Long, String> imageByProductId = loadFirstImageByProductId(productIds);
 
         List<ProductListDTO> result = new ArrayList<>(products.size());
@@ -276,8 +308,34 @@ public class ProductServiceImpl implements ProductService {
         return result;
     }
 
+    private List<MyProductListDTO> buildMyProductList(List<Product> products) {
+        if (products == null || products.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        // 1. 先批量查标签和主图。
+        List<Long> productIds = products.stream().map(Product::getId).collect(Collectors.toList());
+        Map<Long, List<String>> tagsByProductId = loadTagsByProductId(productIds);
+        Map<Long, String> imageByProductId = loadFirstImageByProductId(productIds);
+
+        // 2. 再组装用户自己的商品列表，多返回一个 status 字段。
+        List<MyProductListDTO> result = new ArrayList<>(products.size());
+        for (Product product : products) {
+            MyProductListDTO dto = new MyProductListDTO();
+            dto.setId(product.getId());
+            dto.setName(product.getName());
+            dto.setTags(tagsByProductId.getOrDefault(product.getId(), Collections.emptyList()));
+            dto.setImageUrl(imageByProductId.get(product.getId()));
+            dto.setDescription(product.getDescription());
+            dto.setStatus(product.getStatus());
+            result.add(dto);
+        }
+        return result;
+    }
+
     private Map<Long, List<String>> loadTagsByProductId(List<Long> productIds) {
         Map<Long, LinkedHashSet<String>> groupedTags = new LinkedHashMap<>();
+        // 关联表会返回“商品-标签”平铺结果，这里按商品 id 重新归并成列表。
         for (ProductTagRelationDTO relation : productTagMapper.selectTagNamesByProductIds(productIds)) {
             groupedTags.computeIfAbsent(relation.getProductId(), key -> new LinkedHashSet<>()).add(relation.getTagName());
         }
@@ -291,6 +349,7 @@ public class ProductServiceImpl implements ProductService {
 
     private Map<Long, String> loadFirstImageByProductId(List<Long> productIds) {
         Map<Long, String> imageByProductId = new LinkedHashMap<>();
+        // SQL 已经按商品和排序顺序排好，这里保留每个商品遇到的第一张图片即可。
         for (ProductImage image : productImageMapper.selectByProductIds(productIds)) {
             imageByProductId.putIfAbsent(image.getProductId(), image.getImageUrl());
         }
@@ -331,6 +390,7 @@ public class ProductServiceImpl implements ProductService {
 
     private void saveImages(Long productId, List<String> imageUrls) {
         List<ProductImage> images = new ArrayList<>(imageUrls.size());
+        // 按前端传入顺序写 sort_order，保证后续主图和详情图顺序稳定。
         for (int i = 0; i < imageUrls.size(); i++) {
             ProductImage image = new ProductImage();
             image.setProductId(productId);
@@ -347,7 +407,9 @@ public class ProductServiceImpl implements ProductService {
             return;
         }
 
+        // 1. 先把标签名称解析出来，并确保每个标签在 tag 表中都有记录。
         List<Long> tagIds = resolveTagIds(tagNames);
+        // 2. 再把商品 id 和 tag id 写入关联表。
         List<ProductTag> productTags = new ArrayList<>(tagIds.size());
         for (Long tagId : tagIds) {
             ProductTag productTag = new ProductTag();
@@ -363,6 +425,7 @@ public class ProductServiceImpl implements ProductService {
             return Collections.emptyList();
         }
 
+        // 标签由前端按空格传入，这里顺手做 trim 和去重。
         LinkedHashSet<String> tagNames = Arrays.stream(rawTags.trim().split("\\s+"))
                 .filter(StringUtils::hasText)
                 .map(String::trim)
@@ -371,10 +434,12 @@ public class ProductServiceImpl implements ProductService {
     }
 
     private List<Long> resolveTagIds(List<String> tagNames) {
+        // 1. 先批量查已有标签。
         List<Tag> existingTags = tagMapper.selectByNames(tagNames);
         Map<String, Long> tagIdMap = existingTags.stream()
                 .collect(Collectors.toMap(Tag::getName, Tag::getId, (left, right) -> left, LinkedHashMap::new));
 
+        // 2. 不存在的标签再补创建，最终得到完整的 tagId 列表。
         List<Long> tagIds = new ArrayList<>(tagNames.size());
         for (String tagName : tagNames) {
             Long tagId = tagIdMap.get(tagName);
@@ -391,14 +456,16 @@ public class ProductServiceImpl implements ProductService {
         Tag tag = new Tag();
         tag.setName(tagName);
         try {
+            // 先尝试直接插入，单线程场景下一次就能拿到新 tagId。
             int rows = tagMapper.insertTag(tag);
             if (rows == 1 && tag.getId() != null) {
                 return tag.getId();
             }
         } catch (DuplicateKeyException ignored) {
-            // Another request may have inserted the same tag concurrently.
+            // 并发下可能有别的请求刚好创建了同名标签，回查一次即可复用。
         }
 
+        // 插入失败或并发冲突时，回表按名称查一次，拿到最终 tagId。
         Tag existingTag = tagMapper.selectByName(tagName);
         if (existingTag == null || existingTag.getId() == null) {
             throw new IllegalStateException("load tag failed");

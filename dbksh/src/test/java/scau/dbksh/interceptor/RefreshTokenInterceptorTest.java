@@ -1,7 +1,6 @@
 package scau.dbksh.interceptor;
 
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -38,11 +37,6 @@ class RefreshTokenInterceptorTest {
     @InjectMocks
     private RefreshTokenInterceptor refreshTokenInterceptor;
 
-    @BeforeEach
-    void setUp() {
-        when(stringRedisTemplate.opsForHash()).thenReturn(hashOperations);
-    }
-
     @AfterEach
     void tearDown() {
         UserHolder.removeUser();
@@ -68,6 +62,7 @@ class RefreshTokenInterceptorTest {
         userMap.put("id", "1");
         userMap.put("username", "alice");
         userMap.put("role", "\u7528\u6237\u7aef");
+        when(stringRedisTemplate.opsForHash()).thenReturn(hashOperations);
         when(hashOperations.entries(RedisConstants.LOGIN_USER_KEY + "token_001")).thenReturn(userMap);
 
         assertTrue(refreshTokenInterceptor.preHandle(request, response, new Object()));

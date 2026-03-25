@@ -1,5 +1,6 @@
 package scau.dbksh.controller.user;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -16,12 +17,14 @@ import java.util.List;
 @RequestMapping("/shop")
 public class ShopController {
 
-    private final ProductService productService;
+    //private final ProductService productService;
 
-    public ShopController(ProductService productService) {
-        this.productService = productService;
-    }
+    //public ShopController(ProductService productService) {
+     //   this.productService = productService;
+    //}
 
+    @Autowired
+    private ProductService productService;
     @GetMapping("/products/category")
     public Result<List<ProductListDTO>> listByCategory(@RequestParam("category") String category) {
         return productService.listByCategory(category);

@@ -30,6 +30,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -59,9 +60,9 @@ class UserServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        when(stringRedisTemplate.opsForValue()).thenReturn(valueOperations);
-        when(stringRedisTemplate.opsForHash()).thenReturn(hashOperations);
-        doReturn(true).when(environment).acceptsProfiles(any(Profiles.class));
+        lenient().when(stringRedisTemplate.opsForValue()).thenReturn(valueOperations);
+        lenient().when(stringRedisTemplate.opsForHash()).thenReturn(hashOperations);
+        lenient().doReturn(true).when(environment).acceptsProfiles(any(Profiles.class));
     }
 
     @Test

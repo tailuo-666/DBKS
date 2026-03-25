@@ -68,6 +68,23 @@
           and status = '已上架'
     </select>
 
+    <select id="selectBySellerId" resultType="Product">
+        select id,
+               seller_id,
+               category,
+               name,
+               description,
+               price,
+               wechat,
+               address,
+               status,
+               create_time,
+               update_time
+        from product
+        where seller_id = #{sellerId}
+        order by create_time desc, id desc
+    </select>
+
     <select id="selectByIdAndSellerId" resultType="Product">
         select id,
                seller_id,
