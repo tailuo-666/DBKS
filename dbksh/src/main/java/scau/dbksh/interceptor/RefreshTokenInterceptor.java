@@ -35,12 +35,13 @@ public class RefreshTokenInterceptor implements HandlerInterceptor {
             return true;
         }
 
-        // 请求开始时恢复当前用户，并顺手刷新 token 过期时间。
+        // 1. 请求开始时先从 Redis 恢复当前登录用户。
         UserDTO userDTO = new UserDTO();
         userDTO.setId(Long.valueOf(String.valueOf(userMap.get("id"))));
         userDTO.setUsername(String.valueOf(userMap.get("username")));
         userDTO.setRole(String.valueOf(userMap.get("role")));
         UserHolder.saveUser(userDTO);
+        // 2. 顺手刷新 token 的过期时间，延长登录态有效期。
         stringRedisTemplate.expire(tokenKey, RedisConstants.LOGIN_USER_TTL, TimeUnit.MINUTES);
         return true;
     }
@@ -52,7 +53,7 @@ public class RefreshTokenInterceptor implements HandlerInterceptor {
             Object handler,
             Exception ex
     ) {
-        // ThreadLocal 必须在请求结束后清理，避免线程复用导致用户串号。
+        // 请求结束后必须清理 ThreadLocal，避免线程复用导致用户串号。
         UserHolder.removeUser();
     }
 }

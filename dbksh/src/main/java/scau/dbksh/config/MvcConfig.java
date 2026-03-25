@@ -19,12 +19,12 @@ public class MvcConfig implements WebMvcConfigurer {
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
-        // 先尝试从 token 恢复登录态，后续拦截器和业务代码都依赖 UserHolder 中的用户信息。
+        // 1. 先尝试从 token 恢复登录态，后续拦截器和业务代码都依赖 UserHolder 里的用户信息。
         registry.addInterceptor(refreshTokenInterceptor)
                 .addPathPatterns("/**")
                 .order(0);
 
-        // 公开浏览接口放行，其余 /user/** 接口默认要求登录。
+        // 2. 再做登录校验；公开浏览接口放行，其余接口默认要求登录。
         registry.addInterceptor(loginInterceptor)
                 .addPathPatterns("/**")
                 .excludePathPatterns(
