@@ -102,6 +102,22 @@
           and seller_id = #{sellerId}
     </select>
 
+    <select id="selectById" resultType="Product">
+        select id,
+               seller_id,
+               category,
+               name,
+               description,
+               price,
+               wechat,
+               address,
+               status,
+               create_time,
+               update_time
+        from product
+        where id = #{id}
+    </select>
+
     <insert id="insertProduct" useGeneratedKeys="true" keyProperty="id">
         insert into product (
             seller_id,
@@ -135,5 +151,11 @@
             status = #{status}
         where id = #{id}
           and seller_id = #{sellerId}
+    </update>
+
+    <update id="updateStatusById">
+        update product
+        set status = #{status}
+        where id = #{id}
     </update>
 </mapper>

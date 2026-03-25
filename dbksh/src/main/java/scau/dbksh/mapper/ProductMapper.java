@@ -21,7 +21,11 @@ public interface ProductMapper {
 
     Product selectByIdAndSellerId(@Param("id") Long id, @Param("sellerId") Long sellerId);
 
+    Product selectById(@Param("id") Long id);
+
     int insertProduct(Product product);
 
     int updateProduct(Product product);
+
+    int updateStatusById(@Param("id") Long id, @Param("status") String status);
 }

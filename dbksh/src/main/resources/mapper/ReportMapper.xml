@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="scau.dbksh.mapper.ReportMapper">
+
+    <insert id="insertReport" useGeneratedKeys="true" keyProperty="id">
+        insert into reports (
+            user_id,
+            product_id,
+            seller_id,
+            reason,
+            status
+        ) values (
+            #{userId},
+            #{productId},
+            #{sellerId},
+            #{reason},
+            #{status}
+        )
+    </insert>
+
+    <select id="selectById" resultType="Report">
+        select id,
+               user_id,
+               product_id,
+               seller_id,
+               reason,
+               status,
+               create_time,
+               update_time
+        from reports
+        where id = #{id}
+    </select>
+
+    <select id="countPendingByUserIdAndProductId" resultType="int">
+        select count(1)
+        from reports
+        where user_id = #{userId}
+          and product_id = #{productId}
+          and status = #{status}
+    </select>
+
+    <update id="updateStatusByProductId">
+        update reports
+        set status = #{toStatus}
+        where product_id = #{productId}
+          and status = #{fromStatus}
+    </update>
+
+    <select id="selectAllForAdmin" resultType="scau.dbksh.dto.AdminReportDTO">
+        select r.id,
+               r.user_id as userId,
+               r.product_id as productId,
+               r.seller_id as sellerId,
+               r.reason,
+               r.status,
+               r.create_time as createTime,
+               r.update_time as updateTime,
+               p.name as productName,
+               p.status as productStatus
+        from reports r
+                 left join product p on r.product_id = p.id
+        order by case when r.status = '&#x5F85;&#x5904;&#x7406;' then 0 else 1 end asc,
+                 r.create_time desc,
+                 r.id desc
+    </select>
+</mapper>

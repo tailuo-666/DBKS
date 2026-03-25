@@ -3,6 +3,7 @@ package scau.dbksh.config;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+import scau.dbksh.interceptor.AdminInterceptor;
 import scau.dbksh.interceptor.LoginInterceptor;
 import scau.dbksh.interceptor.RefreshTokenInterceptor;
 
@@ -11,10 +12,16 @@ public class MvcConfig implements WebMvcConfigurer {
 
     private final RefreshTokenInterceptor refreshTokenInterceptor;
     private final LoginInterceptor loginInterceptor;
+    private final AdminInterceptor adminInterceptor;
 
-    public MvcConfig(RefreshTokenInterceptor refreshTokenInterceptor, LoginInterceptor loginInterceptor) {
+    public MvcConfig(
+            RefreshTokenInterceptor refreshTokenInterceptor,
+            LoginInterceptor loginInterceptor,
+            AdminInterceptor adminInterceptor
+    ) {
         this.refreshTokenInterceptor = refreshTokenInterceptor;
         this.loginInterceptor = loginInterceptor;
+        this.adminInterceptor = adminInterceptor;
     }
 
     @Override
@@ -33,5 +40,9 @@ public class MvcConfig implements WebMvcConfigurer {
                         "/shop/**"
                 )
                 .order(1);
+
+        registry.addInterceptor(adminInterceptor)
+                .addPathPatterns("/admin/**")
+                .order(2);
     }
 }
