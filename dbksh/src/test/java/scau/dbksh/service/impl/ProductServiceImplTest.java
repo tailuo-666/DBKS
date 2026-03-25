@@ -7,6 +7,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.transaction.annotation.Transactional;
 import scau.dbksh.dto.MyProductListDTO;
 import scau.dbksh.dto.ProductCreateDTO;
 import scau.dbksh.dto.ProductDetailDTO;
@@ -14,10 +15,12 @@ import scau.dbksh.dto.ProductListDTO;
 import scau.dbksh.dto.ProductTagRelationDTO;
 import scau.dbksh.dto.ProductUpdateDTO;
 import scau.dbksh.dto.UserDTO;
+import scau.dbksh.entity.BrowseHistory;
 import scau.dbksh.entity.Product;
 import scau.dbksh.entity.ProductImage;
 import scau.dbksh.entity.ProductTag;
 import scau.dbksh.entity.Tag;
+import scau.dbksh.mapper.BrowseHistoryMapper;
 import scau.dbksh.mapper.ProductImageMapper;
 import scau.dbksh.mapper.ProductMapper;
 import scau.dbksh.mapper.ProductTagMapper;
@@ -26,12 +29,14 @@ import scau.dbksh.result.Result;
 import scau.dbksh.utils.UserHolder;
 
 import java.math.BigDecimal;
+import java.lang.reflect.Method;
 import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.doAnswer;
@@ -58,6 +63,9 @@ class ProductServiceImplTest {
 
     @Mock
     private TagMapper tagMapper;
+
+    @Mock
+    private BrowseHistoryMapper browseHistoryMapper;
 
     @InjectMocks
     private ProductServiceImpl productService;
@@ -170,6 +178,61 @@ class ProductServiceImplTest {
         assertEquals("camera", result.getData().getName());
         assertEquals(List.of("https://img.example.com/5-1.jpg", "https://img.example.com/5-2.jpg"), result.getData().getImageUrls());
         assertEquals("wx_camera", result.getData().getWechat());
+        verify(browseHistoryMapper, never()).insertBrowseHistory(any(BrowseHistory.class));
+    }
+
+    @Test
+    void shouldRecordBrowseHistoryWhenUserLoggedIn() {
+        UserHolder.saveUser(currentUser(7L));
+
+        Product product = product(5L, "camera", LocalDateTime.now().minusDays(2));
+        product.setCategory(CATEGORY_ELECTRONICS);
+        when(productMapper.selectPublishedById(5L)).thenReturn(product);
+        when(browseHistoryMapper.insertBrowseHistory(any(BrowseHistory.class))).thenReturn(1);
+        when(productImageMapper.selectByProductId(5L)).thenReturn(List.of(
+                image(5L, "https://img.example.com/5-1.jpg", 1)
+        ));
+
+        Result<ProductDetailDTO> result = productService.getPublishedDetail(5L);
+
+        assertEquals(1, result.getCode());
+        ArgumentCaptor<BrowseHistory> browseHistoryCaptor = ArgumentCaptor.forClass(BrowseHistory.class);
+        verify(browseHistoryMapper).insertBrowseHistory(browseHistoryCaptor.capture());
+        assertEquals(7L, browseHistoryCaptor.getValue().getUserId());
+        assertEquals(5L, browseHistoryCaptor.getValue().getProductId());
+    }
+
+    @Test
+    void shouldNotRecordBrowseHistoryWhenProductNotFound() {
+        UserHolder.saveUser(currentUser(7L));
+        when(productMapper.selectPublishedById(5L)).thenReturn(null);
+
+        Result<ProductDetailDTO> result = productService.getPublishedDetail(5L);
+
+        assertEquals(0, result.getCode());
+        assertEquals("product not found", result.getMsg());
+        verify(browseHistoryMapper, never()).insertBrowseHistory(any(BrowseHistory.class));
+    }
+
+    @Test
+    void shouldReturnFailureWhenBrowseHistorySaveFails() {
+        UserHolder.saveUser(currentUser(7L));
+
+        Product product = product(5L, "camera", LocalDateTime.now().minusDays(2));
+        when(productMapper.selectPublishedById(5L)).thenReturn(product);
+        when(browseHistoryMapper.insertBrowseHistory(any(BrowseHistory.class))).thenReturn(0);
+
+        Result<ProductDetailDTO> result = productService.getPublishedDetail(5L);
+
+        assertEquals(0, result.getCode());
+        assertEquals("save browse history failed", result.getMsg());
+        verify(productImageMapper, never()).selectByProductId(5L);
+    }
+
+    @Test
+    void shouldMarkGetPublishedDetailAsTransactional() throws NoSuchMethodException {
+        Method method = ProductServiceImpl.class.getMethod("getPublishedDetail", Long.class);
+        assertTrue(method.isAnnotationPresent(Transactional.class));
     }
 
     @Test
