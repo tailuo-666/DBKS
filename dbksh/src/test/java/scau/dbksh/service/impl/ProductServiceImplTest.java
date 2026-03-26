@@ -47,6 +47,7 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class ProductServiceImplTest {
 
+    private static final String INVALID_CATEGORY = "\u4e8c\u624b\u4e66\u7c4d";
     private static final String CATEGORY_ELECTRONICS = "\u7535\u5b50\u4ea7\u54c1";
     private static final String STATUS_REVIEWING = "\u5ba1\u6838\u4e2d";
     private static final String STATUS_PUBLISHED = "\u5df2\u4e0a\u67b6";
@@ -127,6 +128,15 @@ class ProductServiceImplTest {
         assertEquals("https://img.example.com/1-1.jpg", result.getData().get(0).getImageUrl());
         assertEquals(List.of("used", "post"), result.getData().get(0).getTags());
         assertFalse(result.getData().get(0).getRelativeTime().isBlank());
+    }
+
+    @Test
+    void shouldRejectListByInvalidCategory() {
+        Result<List<ProductListDTO>> result = productService.listByCategory(INVALID_CATEGORY);
+
+        assertEquals(0, result.getCode());
+        assertEquals("invalid category", result.getMsg());
+        verify(productMapper, never()).selectPublishedByCategory(any());
     }
 
     @Test
@@ -304,6 +314,22 @@ class ProductServiceImplTest {
     }
 
     @Test
+    void shouldRejectCreateWhenCategoryInvalid() {
+        ProductCreateDTO dto = new ProductCreateDTO();
+        dto.setCategory(INVALID_CATEGORY);
+        dto.setName("speaker");
+        dto.setDescription("desc");
+        dto.setPrice(new BigDecimal("88.00"));
+        dto.setImageUrls(List.of("https://img.example.com/1.jpg"));
+
+        Result<Long> result = productService.createProduct(dto);
+
+        assertEquals(0, result.getCode());
+        assertEquals("invalid category", result.getMsg());
+        verify(productMapper, never()).insertProduct(any(Product.class));
+    }
+
+    @Test
     void shouldRejectUpdateWhenProductDoesNotBelongToCurrentUser() {
         UserHolder.saveUser(currentUser(7L));
 
@@ -347,6 +373,19 @@ class ProductServiceImplTest {
         verify(productTagMapper).insertBatch(tagCaptor.capture());
         assertEquals(1, tagCaptor.getValue().size());
         assertEquals(5L, tagCaptor.getValue().get(0).getTagId());
+    }
+
+    @Test
+    void shouldRejectUpdateWhenCategoryInvalid() {
+        ProductUpdateDTO dto = validUpdateDTO();
+        dto.setCategory(INVALID_CATEGORY);
+
+        Result<Void> result = productService.updateProduct(9L, dto);
+
+        assertEquals(0, result.getCode());
+        assertEquals("invalid category", result.getMsg());
+        verify(productMapper, never()).selectByIdAndSellerId(any(), any());
+        verify(productMapper, never()).updateProduct(any(Product.class));
     }
 
     private ProductUpdateDTO validUpdateDTO() {

@@ -10,7 +10,7 @@ export const REPORT_STATUS_PENDING = '\u5f85\u5904\u7406'
 export const REPORT_STATUS_PROCESSED = '\u5df2\u5904\u7406'
 
 export const CATEGORY_OPTIONS = [
-  '\u4e8c\u624b\u4e66\u7c4d',
+  '\u4e8c\u624b\u4e66',
   '\u95f2\u7f6e\u7269\u54c1',
   '\u7535\u5b50\u4ea7\u54c1',
   '\u65e5\u7528\u54c1',
