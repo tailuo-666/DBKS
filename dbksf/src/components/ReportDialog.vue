@@ -57,6 +57,9 @@ async function handleSubmit() {
     :model-value="modelValue"
     title="提交举报"
     width="460px"
+    append-to-body
+    align-center
+    lock-scroll
     destroy-on-close
     @close="closeDialog"
   >
