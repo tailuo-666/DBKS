@@ -49,7 +49,7 @@ class UserControllerTest {
 
     @Test
     void shouldLogin() throws Exception {
-        when(userService.login(any(LoginFormDTO.class))).thenReturn(Result.success("token_001"));
+        when(userService.userLogin(any(LoginFormDTO.class))).thenReturn(Result.success("token_001"));
 
         mockMvc.perform(post("/user/login")
                         .contentType(MediaType.APPLICATION_JSON)

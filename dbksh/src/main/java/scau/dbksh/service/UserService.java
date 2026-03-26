@@ -8,7 +8,9 @@ public interface UserService {
 
     Result<Void> sendCode(String wechat);
 
-    Result<String> login(LoginFormDTO loginFormDTO);
+    Result<String> userLogin(LoginFormDTO loginFormDTO);
+
+    Result<String> adminLogin(LoginFormDTO loginFormDTO);
 
     Result<UserDTO> me();
 }

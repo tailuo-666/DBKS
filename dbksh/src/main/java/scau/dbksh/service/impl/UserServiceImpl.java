@@ -26,6 +26,7 @@ import java.util.concurrent.TimeUnit;
 public class UserServiceImpl implements UserService {
 
     private static final String DEFAULT_ROLE = "\u7528\u6237\u7aef";
+    private static final String ADMIN_ROLE = "\u7ba1\u7406\u5458";
     private static final String USERNAME_PREFIX = "user_";
     private static final Logger log = LoggerFactory.getLogger(UserServiceImpl.class);
 
@@ -45,12 +46,9 @@ public class UserServiceImpl implements UserService {
             return Result.error("wechat cannot be blank");
         }
 
-        // 1. 先生成 6 位验证码。
         String code = String.format("%06d", ThreadLocalRandom.current().nextInt(1_000_000));
-        // 2. 再以 wechat 为 key 写入 Redis，并设置过期时间。
         String redisKey = RedisConstants.LOGIN_CODE_KEY + wechat;
         stringRedisTemplate.opsForValue().set(redisKey, code, RedisConstants.LOGIN_CODE_TTL, TimeUnit.MINUTES);
-        // 3. 开发环境顺手打印验证码，方便前后端联调。
         if (environment.acceptsProfiles(Profiles.of("dev"))) {
             log.info("send login code, wechat={}, code={}", wechat, code);
         }
@@ -58,7 +56,50 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public Result<String> login(LoginFormDTO loginFormDTO) {
+    public Result<String> userLogin(LoginFormDTO loginFormDTO) {
+        Result<User> preparedUser = prepareLoginUser(loginFormDTO);
+        if (preparedUser.getCode() == 0) {
+            return Result.error(preparedUser.getMsg());
+        }
+
+        User user = preparedUser.getData();
+        if (user == null) {
+            user = createUserWithWechat(loginFormDTO.getWechat());
+            int rows = userMapper.insertUser(user);
+            if (rows != 1 || user.getId() == null) {
+                return Result.error("create user failed");
+            }
+        }
+
+        if (!DEFAULT_ROLE.equals(user.getRole())) {
+            return Result.error("forbidden");
+        }
+        return Result.success(createLoginToken(user));
+    }
+
+    @Override
+    public Result<String> adminLogin(LoginFormDTO loginFormDTO) {
+        Result<User> preparedUser = prepareLoginUser(loginFormDTO);
+        if (preparedUser.getCode() == 0) {
+            return Result.error(preparedUser.getMsg());
+        }
+
+        User user = preparedUser.getData();
+        if (user == null) {
+            return Result.error("user not found");
+        }
+        if (!ADMIN_ROLE.equals(user.getRole())) {
+            return Result.error("forbidden");
+        }
+        return Result.success(createLoginToken(user));
+    }
+
+    @Override
+    public Result<UserDTO> me() {
+        return Result.success(UserHolder.getUser());
+    }
+
+    private Result<User> prepareLoginUser(LoginFormDTO loginFormDTO) {
         if (loginFormDTO == null || !StringUtils.hasText(loginFormDTO.getWechat())) {
             return Result.error("wechat cannot be blank");
         }
@@ -66,35 +107,12 @@ public class UserServiceImpl implements UserService {
             return Result.error("code cannot be blank");
         }
 
-        // 1. 先校验 Redis 中缓存的验证码。
         String wechat = loginFormDTO.getWechat();
         String cacheCode = stringRedisTemplate.opsForValue().get(RedisConstants.LOGIN_CODE_KEY + wechat);
         if (!loginFormDTO.getCode().equals(cacheCode)) {
             return Result.error("verification code error");
         }
-
-        // 2. 再按 wechat 查询用户，不存在就自动创建一个新账号。
-        User user = userMapper.selectByWechat(wechat);
-        if (user == null) {
-            user = createUserWithWechat(wechat);
-            int rows = userMapper.insertUser(user);
-            if (rows != 1 || user.getId() == null) {
-                return Result.error("create user failed");
-            }
-        }
-
-        // 3. 最后生成 token，并把当前登录用户信息写入 Redis Hash。
-        String token = UUID.randomUUID().toString().replace("-", "");
-        UserDTO userDTO = toUserDTO(user);
-        String tokenKey = RedisConstants.LOGIN_USER_KEY + token;
-        stringRedisTemplate.opsForHash().putAll(tokenKey, toRedisMap(userDTO));
-        stringRedisTemplate.expire(tokenKey, RedisConstants.LOGIN_USER_TTL, TimeUnit.MINUTES);
-        return Result.success(token);
-    }
-
-    @Override
-    public Result<UserDTO> me() {
-        return Result.success(UserHolder.getUser());
+        return Result.success(userMapper.selectByWechat(wechat));
     }
 
     private User createUserWithWechat(String wechat) {
@@ -103,6 +121,15 @@ public class UserServiceImpl implements UserService {
         user.setUsername(USERNAME_PREFIX + randomSuffix());
         user.setRole(DEFAULT_ROLE);
         return user;
+    }
+
+    private String createLoginToken(User user) {
+        String token = UUID.randomUUID().toString().replace("-", "");
+        UserDTO userDTO = toUserDTO(user);
+        String tokenKey = RedisConstants.LOGIN_USER_KEY + token;
+        stringRedisTemplate.opsForHash().putAll(tokenKey, toRedisMap(userDTO));
+        stringRedisTemplate.expire(tokenKey, RedisConstants.LOGIN_USER_TTL, TimeUnit.MINUTES);
+        return token;
     }
 
     private UserDTO toUserDTO(User user) {

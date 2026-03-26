@@ -1,7 +1,5 @@
-package scau.dbksh.controller;
+package scau.dbksh.controller.admin;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -11,14 +9,17 @@ import scau.dbksh.result.Result;
 import scau.dbksh.service.UserService;
 
 @RestController
-@RequestMapping("/auth")
-public class AuthController {
+@RequestMapping("/admin")
+public class AdminAuthController {
 
+    private final UserService userService;
 
-    @Autowired
-    private UserService userService;
+    public AdminAuthController(UserService userService) {
+        this.userService = userService;
+    }
+
     @PostMapping("/login")
     public Result<String> login(@RequestBody LoginFormDTO loginFormDTO) {
-        return userService.login(loginFormDTO);
+        return userService.adminLogin(loginFormDTO);
     }
 }

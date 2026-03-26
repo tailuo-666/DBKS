@@ -37,12 +37,14 @@ public class MvcConfig implements WebMvcConfigurer {
                 .excludePathPatterns(
                         "/user/code",
                         "/user/login",
+                        "/admin/login",
                         "/shop/**"
                 )
                 .order(1);
 
         registry.addInterceptor(adminInterceptor)
                 .addPathPatterns("/admin/**")
+                .excludePathPatterns("/admin/login")
                 .order(2);
     }
 }

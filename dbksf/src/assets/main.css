@@ -1,35 +1,78 @@
 @import "./base.css";
 
 #app {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-
-  font-weight: normal;
+  min-height: 100vh;
 }
 
-a,
-.green {
-  text-decoration: none;
-  color: hsla(160, 100%, 37%, 1);
-  transition: 0.4s;
+.page-shell {
+  padding: 28px;
+  animation: page-rise 0.42s ease both;
 }
 
-@media (hover: hover) {
-  a:hover {
-    background-color: hsla(160, 100%, 37%, 0.2);
+.page-title {
+  margin: 0;
+  font-size: clamp(1.95rem, 2.4vw, 2.7rem);
+  line-height: 1.1;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+}
+
+.section-title {
+  margin: 0;
+  font-size: 1.18rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.section-card {
+  background: var(--dbks-panel);
+  border: 1px solid var(--dbks-border);
+  border-radius: var(--dbks-radius-xl);
+  box-shadow: var(--dbks-shadow);
+  backdrop-filter: blur(16px);
+}
+
+.subtle-card {
+  background: var(--dbks-panel-strong);
+  border: 1px solid var(--dbks-border);
+  border-radius: var(--dbks-radius-lg);
+}
+
+.muted-text {
+  color: var(--dbks-text-secondary);
+}
+
+.inline-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.page-shell-enter-active,
+.page-shell-leave-active {
+  transition: opacity 0.26s ease, transform 0.26s ease;
+}
+
+.page-shell-enter-from,
+.page-shell-leave-to {
+  opacity: 0;
+  transform: translateY(16px);
+}
+
+@keyframes page-rise {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
-@media (min-width: 1024px) {
-  body {
-    display: flex;
-    place-items: center;
-  }
-
-  #app {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    padding: 0 2rem;
+@media (max-width: 768px) {
+  .page-shell {
+    padding: 16px;
   }
 }

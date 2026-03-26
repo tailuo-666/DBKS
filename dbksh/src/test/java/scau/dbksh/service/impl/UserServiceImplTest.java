@@ -28,8 +28,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -39,6 +39,7 @@ import static org.mockito.Mockito.when;
 class UserServiceImplTest {
 
     private static final String DEFAULT_ROLE = "\u7528\u6237\u7aef";
+    private static final String ADMIN_ROLE = "\u7ba1\u7406\u5458";
 
     @Mock
     private StringRedisTemplate stringRedisTemplate;
@@ -82,13 +83,11 @@ class UserServiceImplTest {
     }
 
     @Test
-    void shouldRejectLoginWhenCodeDoesNotMatch() {
-        LoginFormDTO loginFormDTO = new LoginFormDTO();
-        loginFormDTO.setWechat("wechat_001");
-        loginFormDTO.setCode("654321");
+    void shouldRejectUserLoginWhenCodeDoesNotMatch() {
+        LoginFormDTO loginFormDTO = loginForm("wechat_001", "654321");
         when(valueOperations.get(RedisConstants.LOGIN_CODE_KEY + "wechat_001")).thenReturn("123456");
 
-        Result<String> result = userService.login(loginFormDTO);
+        Result<String> result = userService.userLogin(loginFormDTO);
 
         assertEquals(0, result.getCode());
         assertEquals("verification code error", result.getMsg());
@@ -96,19 +95,11 @@ class UserServiceImplTest {
 
     @Test
     void shouldLoginExistingUserAndStoreToken() {
-        LoginFormDTO loginFormDTO = new LoginFormDTO();
-        loginFormDTO.setWechat("wechat_001");
-        loginFormDTO.setCode("123456");
+        LoginFormDTO loginFormDTO = loginForm("wechat_001", "123456");
         when(valueOperations.get(RedisConstants.LOGIN_CODE_KEY + "wechat_001")).thenReturn("123456");
+        when(userMapper.selectByWechat("wechat_001")).thenReturn(user(1L, "alice", "wechat_001", DEFAULT_ROLE));
 
-        User user = new User();
-        user.setId(1L);
-        user.setWechat("wechat_001");
-        user.setUsername("alice");
-        user.setRole(DEFAULT_ROLE);
-        when(userMapper.selectByWechat("wechat_001")).thenReturn(user);
-
-        Result<String> result = userService.login(loginFormDTO);
+        Result<String> result = userService.userLogin(loginFormDTO);
 
         assertEquals(1, result.getCode());
         assertNotNull(result.getData());
@@ -127,9 +118,7 @@ class UserServiceImplTest {
 
     @Test
     void shouldCreateUserWhenWechatDoesNotExist() {
-        LoginFormDTO loginFormDTO = new LoginFormDTO();
-        loginFormDTO.setWechat("wechat_002");
-        loginFormDTO.setCode("123456");
+        LoginFormDTO loginFormDTO = loginForm("wechat_002", "123456");
         when(valueOperations.get(RedisConstants.LOGIN_CODE_KEY + "wechat_002")).thenReturn("123456");
         when(userMapper.selectByWechat("wechat_002")).thenReturn(null);
         doAnswer(invocation -> {
@@ -138,7 +127,7 @@ class UserServiceImplTest {
             return 1;
         }).when(userMapper).insertUser(any(User.class));
 
-        Result<String> result = userService.login(loginFormDTO);
+        Result<String> result = userService.userLogin(loginFormDTO);
 
         assertEquals(1, result.getCode());
 
@@ -148,5 +137,81 @@ class UserServiceImplTest {
         assertEquals(DEFAULT_ROLE, userCaptor.getValue().getRole());
         assertTrue(userCaptor.getValue().getUsername().startsWith("user_"));
         verify(stringRedisTemplate, never()).delete(anyString());
+    }
+
+    @Test
+    void shouldRejectUserLoginForAdminAccount() {
+        LoginFormDTO loginFormDTO = loginForm("admin_001", "123456");
+        when(valueOperations.get(RedisConstants.LOGIN_CODE_KEY + "admin_001")).thenReturn("123456");
+        when(userMapper.selectByWechat("admin_001")).thenReturn(user(9L, "admin", "admin_001", ADMIN_ROLE));
+
+        Result<String> result = userService.userLogin(loginFormDTO);
+
+        assertEquals(0, result.getCode());
+        assertEquals("forbidden", result.getMsg());
+    }
+
+    @Test
+    void shouldLoginExistingAdminAndStoreToken() {
+        LoginFormDTO loginFormDTO = loginForm("admin_001", "123456");
+        when(valueOperations.get(RedisConstants.LOGIN_CODE_KEY + "admin_001")).thenReturn("123456");
+        when(userMapper.selectByWechat("admin_001")).thenReturn(user(9L, "admin", "admin_001", ADMIN_ROLE));
+
+        Result<String> result = userService.adminLogin(loginFormDTO);
+
+        assertEquals(1, result.getCode());
+        assertNotNull(result.getData());
+        assertFalse(result.getData().isBlank());
+    }
+
+    @Test
+    void shouldRejectAdminLoginWhenUserDoesNotExist() {
+        LoginFormDTO loginFormDTO = loginForm("admin_002", "123456");
+        when(valueOperations.get(RedisConstants.LOGIN_CODE_KEY + "admin_002")).thenReturn("123456");
+        when(userMapper.selectByWechat("admin_002")).thenReturn(null);
+
+        Result<String> result = userService.adminLogin(loginFormDTO);
+
+        assertEquals(0, result.getCode());
+        assertEquals("user not found", result.getMsg());
+    }
+
+    @Test
+    void shouldRejectAdminLoginForUserAccount() {
+        LoginFormDTO loginFormDTO = loginForm("wechat_001", "123456");
+        when(valueOperations.get(RedisConstants.LOGIN_CODE_KEY + "wechat_001")).thenReturn("123456");
+        when(userMapper.selectByWechat("wechat_001")).thenReturn(user(1L, "alice", "wechat_001", DEFAULT_ROLE));
+
+        Result<String> result = userService.adminLogin(loginFormDTO);
+
+        assertEquals(0, result.getCode());
+        assertEquals("forbidden", result.getMsg());
+    }
+
+    @Test
+    void shouldRejectAdminLoginWhenCodeDoesNotMatch() {
+        LoginFormDTO loginFormDTO = loginForm("admin_001", "654321");
+        when(valueOperations.get(RedisConstants.LOGIN_CODE_KEY + "admin_001")).thenReturn("123456");
+
+        Result<String> result = userService.adminLogin(loginFormDTO);
+
+        assertEquals(0, result.getCode());
+        assertEquals("verification code error", result.getMsg());
+    }
+
+    private LoginFormDTO loginForm(String wechat, String code) {
+        LoginFormDTO loginFormDTO = new LoginFormDTO();
+        loginFormDTO.setWechat(wechat);
+        loginFormDTO.setCode(code);
+        return loginFormDTO;
+    }
+
+    private User user(Long id, String username, String wechat, String role) {
+        User user = new User();
+        user.setId(id);
+        user.setUsername(username);
+        user.setWechat(wechat);
+        user.setRole(role);
+        return user;
     }
 }
