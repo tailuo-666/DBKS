@@ -13,6 +13,7 @@ import scau.dbksh.mapper.ProductMapper;
 import scau.dbksh.mapper.ReportMapper;
 import scau.dbksh.result.Result;
 import scau.dbksh.service.ReportService;
+import scau.dbksh.utils.RoleUtils;
 import scau.dbksh.utils.UserHolder;
 
 import java.util.List;
@@ -25,8 +26,6 @@ public class ReportServiceImpl implements ReportService {
     private static final String PRODUCT_STATUS_REVIEWING = "\u5ba1\u6838\u4e2d";
     private static final String PRODUCT_STATUS_PUBLISHED = "\u5df2\u4e0a\u67b6";
     private static final String PRODUCT_STATUS_OFF_SHELF = "\u5df2\u4e0b\u67b6";
-    private static final String ADMIN_ROLE = "\u7ba1\u7406\u5458";
-
     private final ReportMapper reportMapper;
     private final ProductMapper productMapper;
 
@@ -164,7 +163,7 @@ public class ReportServiceImpl implements ReportService {
         if (user == null || user.getId() == null) {
             return Result.error("user not logged in");
         }
-        if (!ADMIN_ROLE.equals(user.getRole())) {
+        if (!RoleUtils.isAdminRole(user.getRole())) {
             return Result.error("forbidden");
         }
         return null;

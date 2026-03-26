@@ -14,6 +14,7 @@ import scau.dbksh.entity.User;
 import scau.dbksh.mapper.UserMapper;
 import scau.dbksh.result.Result;
 import scau.dbksh.service.UserService;
+import scau.dbksh.utils.RoleUtils;
 import scau.dbksh.utils.UserHolder;
 
 import java.util.HashMap;
@@ -25,8 +26,6 @@ import java.util.concurrent.TimeUnit;
 @Service
 public class UserServiceImpl implements UserService {
 
-    private static final String DEFAULT_ROLE = "\u7528\u6237\u7aef";
-    private static final String ADMIN_ROLE = "\u7ba1\u7406\u5458";
     private static final String USERNAME_PREFIX = "user_";
     private static final Logger log = LoggerFactory.getLogger(UserServiceImpl.class);
 
@@ -71,7 +70,7 @@ public class UserServiceImpl implements UserService {
             }
         }
 
-        if (!DEFAULT_ROLE.equals(user.getRole())) {
+        if (!RoleUtils.isUserRole(user.getRole())) {
             return Result.error("forbidden");
         }
         return Result.success(createLoginToken(user));
@@ -88,7 +87,7 @@ public class UserServiceImpl implements UserService {
         if (user == null) {
             return Result.error("user not found");
         }
-        if (!ADMIN_ROLE.equals(user.getRole())) {
+        if (!RoleUtils.isAdminRole(user.getRole())) {
             return Result.error("forbidden");
         }
         return Result.success(createLoginToken(user));
@@ -119,7 +118,7 @@ public class UserServiceImpl implements UserService {
         User user = new User();
         user.setWechat(wechat);
         user.setUsername(USERNAME_PREFIX + randomSuffix());
-        user.setRole(DEFAULT_ROLE);
+        user.setRole(RoleUtils.USER_ROLE);
         return user;
     }
 
@@ -136,7 +135,7 @@ public class UserServiceImpl implements UserService {
         UserDTO userDTO = new UserDTO();
         userDTO.setId(user.getId());
         userDTO.setUsername(user.getUsername());
-        userDTO.setRole(user.getRole());
+        userDTO.setRole(RoleUtils.normalizeRole(user.getRole()));
         return userDTO;
     }
 

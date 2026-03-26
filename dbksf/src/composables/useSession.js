@@ -1,15 +1,26 @@
 import { computed, reactive, readonly } from 'vue'
 import { fetchAdminProfile, fetchUserProfile } from '@/api/auth'
 import { clearSessionStorage, loadSessionStorage, saveSessionStorage } from '@/utils/storage'
-import { ROLE_ADMIN, ROLE_USER } from '@/utils/format'
+import { isAdminRole, isUserRole, normalizeRole, ROLE_ADMIN } from '@/utils/format'
+
+function normalizeUser(user) {
+  if (!user || typeof user !== 'object') {
+    return null
+  }
+
+  return {
+    ...user,
+    role: normalizeRole(user.role),
+  }
+}
 
 function createStateFromStorage() {
   const stored = loadSessionStorage()
 
   return {
     token: stored.token,
-    role: stored.role,
-    user: stored.user,
+    role: normalizeRole(stored.role),
+    user: normalizeUser(stored.user),
   }
 }
 
@@ -18,7 +29,7 @@ function buildUserPayload(session) {
     return {
       id: session.user.id,
       username: session.user.username,
-      role: session.user.role || session.role || '',
+      role: normalizeRole(session.user.role || session.role || ''),
     }
   }
 
@@ -26,7 +37,7 @@ function buildUserPayload(session) {
     return {
       id: session.userId || null,
       username: session.username || '',
-      role: session.role || '',
+      role: normalizeRole(session.role || ''),
     }
   }
 
@@ -35,8 +46,8 @@ function buildUserPayload(session) {
 
 function applySessionState(session) {
   sessionState.token = session?.token || ''
-  sessionState.role = session?.role || ''
-  sessionState.user = session?.user ? { ...session.user } : null
+  sessionState.role = normalizeRole(session?.role || '')
+  sessionState.user = normalizeUser(session?.user)
 }
 
 export const sessionState = reactive(createStateFromStorage())
@@ -46,10 +57,14 @@ export function syncSessionFromStorage() {
 }
 
 export function saveSession(session) {
+  const normalizedRole = normalizeRole(session?.role || session?.user?.role || '')
   const nextSession = {
     token: session?.token || '',
-    role: session?.role || '',
-    user: buildUserPayload(session),
+    role: normalizedRole,
+    user: buildUserPayload({
+      ...session,
+      role: normalizedRole,
+    }),
   }
 
   saveSessionStorage(nextSession)
@@ -67,20 +82,21 @@ export function clearSession() {
 
 export async function restoreIdentity(roleHint) {
   const token = sessionState.token || loadSessionStorage().token
-  if (!token || !roleHint) {
-    throw new Error('无法恢复身份')
+  const normalizedRoleHint = normalizeRole(roleHint)
+  if (!token || !normalizedRoleHint) {
+    throw new Error('\u65e0\u6cd5\u6062\u590d\u8eab\u4efd')
   }
 
-  const fetcher = roleHint === ROLE_ADMIN ? fetchAdminProfile : fetchUserProfile
+  const fetcher = normalizedRoleHint === ROLE_ADMIN ? fetchAdminProfile : fetchUserProfile
   const profile = await fetcher()
 
-  if (profile?.role !== roleHint) {
-    throw new Error('角色不匹配')
+  if (normalizeRole(profile?.role) !== normalizedRoleHint) {
+    throw new Error('\u89d2\u8272\u4e0d\u5339\u914d')
   }
 
   saveSession({
     token,
-    role: profile.role,
+    role: normalizeRole(profile.role),
     userId: profile.id,
     username: profile.username,
     user: profile,
@@ -93,9 +109,9 @@ export function useSession() {
   return {
     sessionState: readonly(sessionState),
     isAuthenticated: computed(() => Boolean(sessionState.token)),
-    displayName: computed(() => sessionState.user?.username || '未登录'),
-    isAdmin: computed(() => sessionState.role === ROLE_ADMIN),
-    isUser: computed(() => sessionState.role === ROLE_USER),
+    displayName: computed(() => sessionState.user?.username || '\u672a\u767b\u5f55'),
+    isAdmin: computed(() => isAdminRole(sessionState.role)),
+    isUser: computed(() => isUserRole(sessionState.role)),
     saveSession,
     clearSession,
     restoreIdentity,
