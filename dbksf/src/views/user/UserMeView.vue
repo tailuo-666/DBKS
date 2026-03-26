@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import ProductEditDrawer from '@/components/ProductEditDrawer.vue'
 import { fetchUserProfile } from '@/api/auth'
@@ -24,6 +24,12 @@ const editSubmitting = ref(false)
 const editDraft = ref(null)
 const editTarget = ref(null)
 const missingFields = ref([])
+
+const resolvedProfile = computed(() => ({
+  id: profile.value?.id ?? sessionState.user?.id ?? null,
+  username: profile.value?.username || sessionState.user?.username || '当前用户',
+  role: profile.value?.role || sessionState.user?.role || sessionState.role || '用户端',
+}))
 
 async function refreshProducts() {
   productsLoading.value = true
@@ -114,23 +120,26 @@ onMounted(() => {
       <div class="profile-head">
         <div>
           <span class="muted-text">用户信息</span>
-          <h1 class="page-title">{{ profile?.username || '当前用户' }}</h1>
+          <h1 class="page-title">{{ resolvedProfile.username }}</h1>
         </div>
 
-        <el-tag effect="plain">{{ profile?.role || '用户端' }}</el-tag>
+        <el-tag effect="plain">{{ resolvedProfile.role }}</el-tag>
       </div>
 
-      <el-descriptions :column="3" border>
-        <el-descriptions-item label="用户 ID">
-          {{ profile?.id || '—' }}
-        </el-descriptions-item>
-        <el-descriptions-item label="用户名">
-          {{ profile?.username || '—' }}
-        </el-descriptions-item>
-        <el-descriptions-item label="角色">
-          {{ profile?.role || '—' }}
-        </el-descriptions-item>
-      </el-descriptions>
+      <div class="profile-meta-grid">
+        <div class="profile-meta-item">
+          <span class="profile-meta-label">用户 ID</span>
+          <strong class="profile-meta-value">{{ resolvedProfile.id ?? '—' }}</strong>
+        </div>
+        <div class="profile-meta-item">
+          <span class="profile-meta-label">用户名</span>
+          <strong class="profile-meta-value">{{ resolvedProfile.username }}</strong>
+        </div>
+        <div class="profile-meta-item">
+          <span class="profile-meta-label">角色</span>
+          <strong class="profile-meta-value">{{ resolvedProfile.role }}</strong>
+        </div>
+      </div>
     </section>
 
     <section class="products-card section-card">
@@ -212,6 +221,31 @@ onMounted(() => {
   padding: 24px;
 }
 
+.profile-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.profile-meta-item {
+  display: grid;
+  gap: 8px;
+  padding: 18px;
+  border: 1px solid var(--dbks-border);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.profile-meta-label {
+  color: var(--dbks-text-secondary);
+  font-size: 13px;
+}
+
+.profile-meta-value {
+  font-size: 24px;
+  line-height: 1.1;
+}
+
 .profile-head,
 .section-head,
 .content-head {
@@ -279,6 +313,10 @@ onMounted(() => {
   .section-head,
   .content-head {
     flex-direction: column;
+  }
+
+  .profile-meta-grid {
+    grid-template-columns: 1fr;
   }
 
   .my-product-row {

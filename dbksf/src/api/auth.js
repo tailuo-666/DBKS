@@ -14,10 +14,14 @@ export function loginAsAdmin(payload) {
   return request.post('/admin/login', payload)
 }
 
-export function fetchUserProfile() {
-  return request.get('/user/me')
+export function fetchUserProfile(token) {
+  return request.get('/user/me', {
+    headers: token ? { authorization: token } : undefined,
+  })
 }
 
-export function fetchAdminProfile() {
-  return request.get('/admin/me')
+export function fetchAdminProfile(token) {
+  return request.get('/admin/me', {
+    headers: token ? { authorization: token } : undefined,
+  })
 }

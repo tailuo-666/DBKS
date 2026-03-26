@@ -5,6 +5,25 @@ import { clearSessionStorage, getStoredToken } from '@/utils/storage'
 let unauthorizedHandler = null
 let authNoticeTimer = null
 
+function normalizeBackendMessage(message) {
+  switch (message) {
+    case 'forbidden':
+      return '当前账号角色不匹配，无法访问所选端'
+    case 'user not found':
+      return '账号不存在'
+    case 'verification code error':
+      return '验证码错误'
+    case 'wechat cannot be blank':
+      return '微信号不能为空'
+    case 'code cannot be blank':
+      return '验证码不能为空'
+    case 'create user failed':
+      return '创建用户失败'
+    default:
+      return message
+  }
+}
+
 function createHandledError(message, extra = {}) {
   const error = new Error(message)
   error.isHandled = true
@@ -50,7 +69,7 @@ request.interceptors.response.use(
         return payload.data
       }
 
-      const message = payload.msg || '请求失败'
+      const message = normalizeBackendMessage(payload.msg) || '请求失败'
       ElMessage.error(message)
       return Promise.reject(createHandledError(message, { code: payload.code }))
     }
@@ -71,11 +90,14 @@ request.interceptors.response.use(
     }
 
     if (status === 403) {
-      ElMessage.error('无权限访问该页面')
-      return Promise.reject(createHandledError('无权限访问该页面', { status }))
+      const message = '无权限访问该页面'
+      ElMessage.error(message)
+      return Promise.reject(createHandledError(message, { status }))
     }
 
-    const message = error.response?.data?.msg || error.message || '网络请求失败'
+    const message = normalizeBackendMessage(error.response?.data?.msg)
+      || error.message
+      || '网络请求失败'
     ElMessage.error(message)
     return Promise.reject(createHandledError(message, { status }))
   },

@@ -111,8 +111,8 @@ async function handleLogin() {
       : await loginAsUser(payload)
 
     const profile = activeRole.value === ROLE_ADMIN
-      ? await fetchAdminProfile()
-      : await fetchUserProfile()
+      ? await fetchAdminProfile(token)
+      : await fetchUserProfile(token)
 
     if (profile?.role !== activeRole.value) {
       throw new Error('登录角色与当前模式不一致')
